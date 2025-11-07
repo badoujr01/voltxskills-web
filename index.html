@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VoltXSkills</title>
+  <meta name="description" content="Learn skills. Support creators. Powered by VoltX." />
+  <link rel="manifest" href="data:application/manifest+json,{%22name%22:%22VoltXSkills%22,%22short_name%22:%22VoltX%22,%22start_url%22:%22/%22,%22display%22:%22standalone%22,%22background_color%22:%22%230a0a1a%22,%22theme_color%22:%22%238A2BE2%22}">
+  <style>
+    :root {
+      --volt-purple: #8A2BE2;
+      --volt-cyan: #00FFFF;
+      --volt-blue: #00BFFF;
+      --dark-bg: #0a0a1a;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: linear-gradient(135deg, var(--dark-bg), #1a1a3a);
+      color: white;
+      font-family: 'Segoe UI', sans-serif;
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .glow {
+      box-shadow: 0 0 15px var(--volt-cyan);
+      border-radius: 12px;
+    }
+    header {
+      text-align: center;
+      padding: 20px 0;
+      margin-bottom: 20px;
+    }
+    h1 {
+      background: linear-gradient(to right, var(--volt-cyan), var(--volt-purple));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      font-size: 2.5rem;
+      text-shadow: 0 0 10px rgba(0, 255, 255, 0.3);
+    }
+    .btn {
+      background: var(--volt-purple);
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      margin: 10px;
+      border-radius: 30px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: all 0.3s;
+    }
+    .btn:hover { transform: scale(1.05); box-shadow: 0 0 20px var(--volt-cyan); }
+    .hidden { display: none; }
+    .video-card {
+      background: rgba(20, 20, 40, 0.7);
+      border-radius: 16px;
+      padding: 16px;
+      margin: 16px 0;
+      border: 1px solid var(--volt-blue);
+    }
+    video, iframe {
+      width: 100%;
+      border-radius: 12px;
+      background: black;
+      min-height: 200px;
+    }
+    #uploadForm, #feed { max-width: 800px; margin: 0 auto; }
+    input, button { font-size: 1rem; }
+    input[type="text"], input[type="number"], input[type="file"] {
+      width: 100%;
+      padding: 10px;
+      margin: 8px 0;
+      border-radius: 8px;
+      border: 1px solid var(--volt-blue);
+      background: rgba(10, 10, 30, 0.7);
+      color: white;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>⚡ VoltXSkills</h1>
+    <p>Master skills. Support creators. Earn energy.</p>
+  </header>
+
+  <!-- Auth Section -->
+  <div id="authSection">
+    <button id="loginBtn" class="btn glow">🚀 Sign In with Google</button>
+  </div>
+
+  <!-- Upload Section -->
+  <div id="uploadSection" class="hidden">
+    <h2>Upload Your Skill Reel</h2>
+    <form id="uploadForm">
+      <input type="text" id="title" placeholder="e.g., 'Build a Web App in 10 Min'" required />
+      <input type="number" id="price" placeholder="Price in USD (0 = free)" min="0" step="0.01" value="0" required />
+      <input type="file" id="videoFile" accept="video/mp4,video/quicktime" required />
+      <button type="submit" class="btn glow">📤 Upload to VoltX</button>
+    </form>
+  </div>
+
+  <!-- Feed Section -->
+  <div id="feed" class="hidden">
+    <h2>🔥 Trending Skills</h2>
+    <div id="reelsContainer"></div>
+  </div>
+
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+
+  <script>
+    // 🔑 Cloudflare Stream Upload URL (from your working cURL command)
+    const CLOUDFLARE_STREAM_UPLOAD_URL = "https://upload.cloudflarestream.com/92549e0aa7424b6730232635c06c0a76";
+    const R2_BUCKET_NAME = "voltxskills-assets"; // your R2 bucket
+
+    // 🔥 YOUR EXACT FIREBASE CONFIG — verified and inserted
+    const firebaseConfig = {
+      apiKey: "AIzaSyD0fKSpBLzb6rU1xZyHFrGd2YpimbPxmHU",
+      authDomain: "voltxskills.firebaseapp.com",
+      projectId: "voltxskills",
+      storageBucket: "voltxskills.firebasestorage.app",
+      messagingSenderId: "883563789061",
+      appId: "1:883563789061:web:b0798da0127e74f3d7956c"
+    };
+
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    // DOM Elements
+    const authSec = document.getElementById('authSection');
+    const uploadSec = document.getElementById('uploadSection');
+    const feedSec = document.getElementById('feed');
+    const loginBtn = document.getElementById('loginBtn');
+    const uploadForm = document.getElementById('uploadForm');
+    const reelsContainer = document.getElementById('reelsContainer');
+
+    // Auth state observer
+    auth.onAuthStateChanged(user => {
+      if (user) {
+        authSec.classList.add('hidden');
+        uploadSec.classList.remove('hidden');
+        feedSec.classList.remove('hidden');
+        loadReels();
+      } else {
+        authSec.classList.remove('hidden');
+        uploadSec.classList.add('hidden');
+        feedSec.classList.add('hidden');
+      }
+    });
+
+    // Google Sign-In
+    loginBtn.onclick = () => {
+      const provider = new firebase.auth.GoogleAuthProvider();
+      auth.signInWithPopup(provider).catch(err => {
+        console.error("Login failed:", err);
+        alert("Sign-in failed. Try again.");
+      });
+    };
+
+    // Upload handler
+    uploadForm.onsubmit = async (e) => {
+      e.preventDefault();
+      const file = document.getElementById('videoFile').files[0];
+      const title = document.getElementById('title').value.trim();
+      const price = parseFloat(document.getElementById('price').value) || 0;
+
+      if (!file) {
+        alert("Please select a video file.");
+        return;
+      }
+      if (file.size > 50 * 1024 * 1024) {
+        alert("Video must be under 50MB.");
+        return;
+      }
+      if (!title) {
+        alert("Please enter a title.");
+        return;
+      }
+
+      try {
+        // Upload to Cloudflare Stream
+        const res = await fetch(CLOUDFLARE_STREAM_UPLOAD_URL, {
+          method: 'POST',
+          body: file
+        });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.message || 'Upload failed');
+
+        // Save metadata to Firestore
+        await db.collection('reels').add({
+          title,
+          price,
+          isFree: price <= 0,
+          streamUid: data.result.uid,
+          ownerId: auth.currentUser.uid,
+          ownerEmail: auth.currentUser.email,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        alert("✅ Reel uploaded! It will appear in the feed.");
+        uploadForm.reset();
+        loadReels();
+
+      } catch (err) {
+        console.error(err);
+        alert("Upload error: " + (err.message || "Unknown error"));
+      }
+    };
+
+    // Load reels feed
+    async function loadReels() {
+      reelsContainer.innerHTML = '<p>Loading reels...</p>';
+      try {
+        const snap = await db.collection('reels')
+          .orderBy('createdAt', 'desc')
+          .limit(10)
+          .get();
+
+        if (snap.empty) {
+          reelsContainer.innerHTML = '<p>No reels yet. Be the first to upload!</p>';
+          return;
+        }
+
+        reelsContainer.innerHTML = '';
+        snap.forEach(doc => {
+          const r = doc.data();
+          const embedUrl = `https://iframe.videodelivery.net/${r.streamUid}`;
+          const card = document.createElement('div');
+          card.className = 'video-card glow';
+          card.innerHTML = `
+            <h3>${r.title} ${r.isFree ? '✨ Free' : `💰 $${r.price.toFixed(2)}`}</h3>
+            <p>By: ${r.ownerEmail}</p>
+            ${r.isFree ? 
+              `<iframe src="${embedUrl}" height="300" frameborder="0" allow="autoplay; fullscreen" allowfullscreen></iframe>` :
+              `<button class="btn" onclick="alert('🔓 Unlock with Stripe — coming Day 2!')">🔓 Unlock for $${r.price.toFixed(2)}</button>`
+            }
+          `;
+          reelsContainer.appendChild(card);
+        });
+      } catch (err) {
+        console.error(err);
+        reelsContainer.innerHTML = '<p>❌ Failed to load reels.</p>';
+      }
+    }
+  </script>
+</body>
+</html>
