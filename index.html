@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>VoltXSkills</title>
   <meta name="description" content="Learn skills. Support creators. Powered by VoltX." />
-  <link rel="manifest" href="data:application/manifest+json,{%22name%22:%22VoltXSkills%22,%22short_name%22:%22VoltX%22,%22start_url%22:%22/%22,%22display%22:%22standalone%22,%22background_color%22:%22%230a0a1a%22,%22theme_color%22:%22%238A2BE2%22}">
+  <link rel="manifest" href="application/manifest+json,{%22name%22:%22VoltXSkills%22,%22short_name%22:%22VoltX%22,%22start_url%22:%22/%22,%22display%22:%22standalone%22,%22background_color%22:%22%230a0a1a%22,%22theme_color%22:%22%238A2BE2%22}">
   <style>
     :root {
       --volt-purple: #8A2BE2;
@@ -111,11 +111,11 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 
   <script>
-    // 🔑 Cloudflare Stream Upload URL (from your working cURL command)
-    const CLOUDFLARE_STREAM_UPLOAD_URL = "https://upload.cloudflarestream.com/92549e0aa7424b6730232635c06c0a76";
-    const R2_BUCKET_NAME = "voltxskills-assets"; // your R2 bucket
+    // 🔑 Updated with your fresh, working Cloudflare Stream Upload URL
+    const CLOUDFLARE_STREAM_UPLOAD_URL = "https://upload.cloudflarestream.com/c7d7be82b24f1e2671ed5799b2c3978b";
+    const R2_BUCKET_NAME = "voltxskills-assets";
 
-    // 🔥 YOUR EXACT FIREBASE CONFIG — verified and inserted
+    // 🔥 Your verified Firebase config
     const firebaseConfig = {
       apiKey: "AIzaSyD0fKSpBLzb6rU1xZyHFrGd2YpimbPxmHU",
       authDomain: "voltxskills.firebaseapp.com",
@@ -130,7 +130,7 @@
     const auth = firebase.auth();
     const db = firebase.firestore();
 
-    // DOM Elements
+    // DOM
     const authSec = document.getElementById('authSection');
     const uploadSec = document.getElementById('uploadSection');
     const feedSec = document.getElementById('feed');
@@ -138,7 +138,7 @@
     const uploadForm = document.getElementById('uploadForm');
     const reelsContainer = document.getElementById('reelsContainer');
 
-    // Auth state observer
+    // Auth listener
     auth.onAuthStateChanged(user => {
       if (user) {
         authSec.classList.add('hidden');
@@ -190,7 +190,7 @@
         const data = await res.json();
         if (!data.success) throw new Error(data.message || 'Upload failed');
 
-        // Save metadata to Firestore
+        // Save to Firestore
         await db.collection('reels').add({
           title,
           price,
@@ -211,7 +211,7 @@
       }
     };
 
-    // Load reels feed
+    // Load reels
     async function loadReels() {
       reelsContainer.innerHTML = '<p>Loading reels...</p>';
       try {
